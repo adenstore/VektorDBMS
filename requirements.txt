@@ -1,0 +1,3 @@
+# Milvus-klienten. Milvus Lite (milvus-lite) virker på Linux og macOS (på Windows: brug WSL).
+pymilvus
+milvus-lite

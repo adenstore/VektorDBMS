@@ -1,0 +1,11 @@
+# Start demoen:   docker compose -f milvus-compose.yml run --rm demo
+# Uden pauser:    docker compose -f milvus-compose.yml run --rm demo python /app/demo.py
+services:
+  demo:
+    build: .
+    image: milvus-lite-demo
+    container_name: milvus-lite-demo
+    stdin_open: true   # så "Tryk Enter" virker
+    tty: true
+    volumes:
+      - ./data:/app/data   # film.db havner i mappen ./data på din egen maskine
