@@ -225,8 +225,7 @@ backup bare at kopiere `film.db`.
 
 > *Search engines, wide column stores og vector databaser er hver især bygget til en bestemt slags
 > data og en bestemt måde at søge på. Hvad kendetegner de tre typer, og hvordan adskiller de sig fra
-> hinanden og fra en relationel database? Hvordan vil du afgøre, hvilken af dem et system har brug
-> for, og hvornår kan det give mening at kombinere dem?*
+> hinanden og fra en relationel database?
 
 ### Hvad kendetegner de tre typer?
 
@@ -255,7 +254,6 @@ ord. Spørgsmålet er: **"hvad ligner det her mest?"** (se afsnit 1 og 4).
 |---|---|---|---|---|
 | Data | Strukturerede rækker med relationer | Tekstdokumenter (JSON) | Rækker med fleksible kolonner, grupperet efter nøgle | Vektorer + metadata |
 | Typisk spørgsmål | Præcis match, joins, aggregeringer | Fuldtekst: "indeholder ordene", rangeret | Opslag på partition key, interval på clustering key | Nærmeste naboer: "ligner" |
-| Indeks | B-træ | Inverteret indeks | Partitioner + sorteret lager (LSM-træ) | HNSW, IVF, FLAT |
 | Resultat | Præcist sæt af rækker | Rangeret liste efter relevans | Præcist sæt for en nøgle | Rangeret liste efter afstand |
 | Skema og joins | Fast skema, joins, normalisering | Fleksibelt, ingen rigtige joins | Query-first, denormaliseret, ingen joins | Fast vektordimension, ingen joins |
 | Konsistens | ACID-transaktioner | Næsten realtid, ikke transaktionel | Justerbar (eventual til stærk) | Typisk eventual, ingen transaktioner |
@@ -272,48 +270,6 @@ Den relationelle database er den mest generelle: den kan joine, aggregere og sik
 transaktioner, men den er hverken god til fuldtekst-relevans, semantisk søgning eller milliarder af
 skrivninger i sekundet på tværs af datacentre.
 
-### Hvordan afgør man, hvilken et system har brug for?
-
-Start med **spørgsmålene, systemet skal kunne svare på**, ikke med teknologien:
-
-1. **Skal brugeren søge i tekst med ord, stavefejl og relevans?** ("billig rød sofa", en søgeboks i en
-   webshop, logsøgning) → **search engine**.
-2. **Skal brugeren finde noget, der ligner, også uden de samme ord?** (spørgsmål til egne dokumenter,
-   anbefalinger, billedsøgning, RAG til en chatbot) → **vektordatabase**.
-3. **Er der ekstremt mange skrivninger, og læser man altid på en kendt nøgle?** (IoT-sensorer,
-   klik-strømme, beskeder pr. bruger, tidsserier, data i flere datacentre) → **wide column store**.
-4. **Er der relationer, transaktioner og behov for at data altid er korrekte?** (ordrer, betalinger,
-   brugere, lager) → **relationel database**.
-
-Derefter ser man på **datamængde og belastning** (passer det i én PostgreSQL med pgvector eller
-fuldtekst?), **konsistenskrav** (må data være et øjeblik forsinket?), **drift** (har teamet
-kompetencer til at drive en klynge?) og **pris**. En vigtig pointe er, at man ikke skal vælge en
-specialdatabase, før behovet er der: en relationel database med `pgvector` og indbygget fuldtekst
-kan klare overraskende meget i et mindre system.
-
-### Hvornår giver det mening at kombinere dem?
-
-I større systemer bruger man ofte flere databaser, hver til det, den er bedst til (*polyglot
-persistence*). Typisk er den relationelle database "sandheden", og de andre er specialiserede kopier
-af data, som holdes opdateret via events eller en kø (fx Kafka eller Change Data Capture).
-
-**Eksempel: en webshop**
-- **PostgreSQL**: produkter, kunder, ordrer og betalinger (transaktioner, korrekthed).
-- **Elasticsearch**: søgeboksen med stavefejl, filtre og facetter.
-- **Vektordatabase**: "lignende produkter" og søgning som "noget varmt at have på i vinter".
-- **Cassandra**: klik og visninger fra millioner af brugere, som bruges til anbefalinger og statistik.
-
-**Hybrid søgning** er den mest typiske kombination af search engine og vektordatabase: man kører
-både en ordsøgning (BM25) og en vektorsøgning og fletter resultaterne (fx med *reciprocal rank
-fusion*). Ordsøgningen er god til præcise ting som varenumre og navne, vektorsøgningen til betydning.
-Sammen giver de bedre resultater end hver for sig. Det bruges meget i RAG-løsninger.
-
-Grænserne bliver også mere flydende: Elasticsearch har fået vektorsøgning (`dense_vector`), Milvus
-har fået fuldtekst (BM25 via sparse-vektorer), og PostgreSQL har `pgvector`. Derfor er afvejningen
-i dag ofte: **én database der kan lidt af det hele** (simpelt at drive, færre kopier af data) **mod
-flere specialiserede** (bedre performance og skalering, men mere drift og risiko for, at kopierne
-kommer ud af sync). Kombinationen giver mening, når kravene til søgning, mængde eller skalering er
-større, end én database kan klare godt.
 
 ## Kilder
 
@@ -321,5 +277,3 @@ større, end én database kan klare godt.
 - Milvus Lite: https://milvus.io/docs/milvus_lite.md
 - Indekstyper: https://milvus.io/docs/index.md
 - DB-Engines, Vector DBMS: https://db-engines.com/en/ranking/vector+dbms
-- Elasticsearch, hvordan søgning virker: https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html
-- Apache Cassandra, datamodellering: https://cassandra.apache.org/doc/latest/cassandra/developing/data-modeling/index.html
